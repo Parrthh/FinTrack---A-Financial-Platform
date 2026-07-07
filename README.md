@@ -1,4 +1,4 @@
-# FinTrack
+# FinTrack - A Financial Platform
 
 A read-only market intelligence platform: track stocks, ETFs, and crypto, with
 daily-scraped news classified by whether it signals genuine company progress.
