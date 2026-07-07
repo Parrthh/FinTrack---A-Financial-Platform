@@ -30,6 +30,12 @@ export default function LandingPage() {
         </span>
         <nav className="flex items-center gap-3">
           <Link
+            href="/assets"
+            className="rounded-md px-4 py-2 text-sm text-slate-300 hover:text-white"
+          >
+            Markets
+          </Link>
+          <Link
             href="/login"
             className="rounded-md px-4 py-2 text-sm text-slate-300 hover:text-white"
           >

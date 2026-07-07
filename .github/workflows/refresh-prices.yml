@@ -1,0 +1,42 @@
+# Free-tier scheduler: Render's free plan has no cron/workers, so GitHub
+# Actions triggers the API's job endpoints on a schedule (and wakes the
+# service if it spun down). Requires two repo secrets once deployed:
+#   FINTRACK_API_URL  e.g. https://fintrack-api.onrender.com
+#   FINTRACK_JOB_TOKEN  matching the JOB_TOKEN env var on the API service
+name: Scheduled price refresh
+
+on:
+  schedule:
+    - cron: "*/30 13-21 * * 1-5" # every 30 min during US market hours (UTC)
+    - cron: "0 */2 * * *" # crypto + off-hours catch-up, every 2 hours
+    - cron: "30 5 * * *" # daily full history backfill (pre-market)
+  workflow_dispatch: # manual trigger for testing
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule != '30 5 * * *'
+    steps:
+      - name: Refresh prices
+        run: |
+          if [ -z "${{ secrets.FINTRACK_API_URL }}" ]; then
+            echo "FINTRACK_API_URL secret not set — skipping (not deployed yet)."
+            exit 0
+          fi
+          curl -sS --fail-with-body --max-time 280 -X POST \
+            -H "X-Job-Token: ${{ secrets.FINTRACK_JOB_TOKEN }}" \
+            "${{ secrets.FINTRACK_API_URL }}/api/jobs/refresh-prices"
+
+  backfill:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '30 5 * * *'
+    steps:
+      - name: Backfill daily history
+        run: |
+          if [ -z "${{ secrets.FINTRACK_API_URL }}" ]; then
+            echo "FINTRACK_API_URL secret not set — skipping (not deployed yet)."
+            exit 0
+          fi
+          curl -sS --fail-with-body --max-time 580 -X POST \
+            -H "X-Job-Token: ${{ secrets.FINTRACK_JOB_TOKEN }}" \
+            "${{ secrets.FINTRACK_API_URL }}/api/jobs/backfill-history"

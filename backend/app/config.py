@@ -34,6 +34,20 @@ class Settings(BaseSettings):
     refresh_cookie_secure: bool = False
     refresh_cookie_samesite: str = "lax"  # use "none" + secure=True in prod
 
+    # Shared secret for job endpoints (GitHub Actions cron -> /api/jobs/*).
+    # Empty string disables the endpoints entirely.
+    job_token: str = ""
+
+    # Market data providers (both free; no API keys).
+    stooq_base_url: str = "https://stooq.com"
+    coingecko_base_url: str = "https://api.coingecko.com"
+    provider_timeout_seconds: float = 20.0
+    # Consider stock quotes stale after this many seconds (free data is
+    # end-of-day/delayed anyway, so hourly is plenty).
+    quote_stale_seconds: int = 3600
+    # Re-fetch an asset's daily history when its newest bar is older than this.
+    history_stale_seconds: int = 24 * 3600
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

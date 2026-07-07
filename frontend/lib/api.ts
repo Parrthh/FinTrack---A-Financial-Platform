@@ -71,6 +71,49 @@ export interface User {
   created_at: string;
 }
 
+export interface Asset {
+  id: string;
+  symbol: string;
+  name: string;
+  asset_type: "stock" | "etf" | "crypto";
+  exchange: string | null;
+  sector: string | null;
+  currency: string;
+  last_price: number | null;
+  last_price_at: string | null;
+  day_change_pct: number | null;
+  market_cap: number | null;
+}
+
+export interface AssetList {
+  items: Asset[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PriceBar {
+  ts: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: number | null;
+}
+
+export interface AssetHistory {
+  symbol: string;
+  range: string;
+  bars: PriceBar[];
+}
+
+export interface TickerEntry {
+  symbol: string;
+  asset_type: string;
+  last_price: number | null;
+  day_change_pct: number | null;
+}
+
 export const api = {
   signup: (email: string, password: string, displayName: string) =>
     request<TokenResponse>("/api/auth/signup", {
@@ -85,4 +128,23 @@ export const api = {
   refresh: () => request<TokenResponse>("/api/auth/refresh", { method: "POST" }),
   logout: () => request<{ message: string }>("/api/auth/logout", { method: "POST" }),
   me: () => request<User>("/api/auth/me"),
+
+  listAssets: (params: {
+    q?: string;
+    asset_type?: string;
+    sort?: string;
+    order?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const search = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== "") search.set(k, String(v));
+    }
+    return request<AssetList>(`/api/assets?${search}`);
+  },
+  getAsset: (symbol: string) => request<Asset>(`/api/assets/${symbol}`),
+  getAssetHistory: (symbol: string, range: string) =>
+    request<AssetHistory>(`/api/assets/${symbol}/history?range=${range}`),
+  marketTicker: (limit = 10) => request<TickerEntry[]>(`/api/market/ticker?limit=${limit}`),
 };

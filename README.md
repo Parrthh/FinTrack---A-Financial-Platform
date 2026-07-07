@@ -8,12 +8,12 @@ Not a trading platform — no orders, no brokerage, no investment advice.
 or hosting plans. Where that limits a feature (e.g. stock quotes are ~15-minute
 delayed rather than real-time), the UI says so instead of pretending otherwise.
 
-## Status — Phase 1 of 6 complete
+## Status — Phase 2 of 6 complete
 
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Skeleton, DB schema, auth (JWT + refresh), dashboard shell | ✅ Done |
-| 2 | Asset universe + price data (free provider, delayed quotes) | ⬜ |
+| 2 | Asset universe + price data (free provider, delayed quotes) | ✅ Done |
 | 3 | Watchlists + dashboard home | ⬜ |
 | 4 | News scraping + LLM "progress" classification | ⬜ |
 | 5 | Real-time layer (WebSocket push; crypto genuinely near-real-time) | ⬜ |
@@ -64,7 +64,26 @@ Copy `.env.example` (repo root) values into `backend/.env` and
 `frontend/.env.local`. Real secrets live only in the host's environment
 variable manager — never in the repo.
 
-## API (Phase 1)
+## Market data (Phase 2)
+
+- **Stocks/ETFs — Stooq** (free, keyless): end-of-day/delayed quotes and full
+  daily history. The UI labels these as delayed; real-time stock data is a
+  paid product and is deliberately out of scope.
+- **Crypto — CoinGecko** (free, keyless): near-real-time prices, market caps,
+  and daily history. The whole crypto universe fits one API call per refresh.
+- **Universe**: a curated ~100-asset list (large caps, major ETFs, top crypto)
+  in `backend/app/universe.py` — deliberately reduced to respect free-tier
+  rate limits; grow it by adding rows there.
+- **Scheduling**: Render's free tier has no cron/workers, so a scheduled
+  GitHub Actions workflow (`.github/workflows/refresh-prices.yml`) calls the
+  token-protected `/api/jobs/*` endpoints — every 30 min during market hours
+  for quotes, daily for the full history backfill. Viewing an asset also
+  triggers an on-demand history refresh if its data is stale.
+- **Local dev without network**: `python -m app.seed --demo-data` generates
+  clearly-synthetic price history so the UI works offline;
+  `python -m app.seed --backfill` fetches real data instead.
+
+## API
 
 | Method | Path | Description |
 |---|---|---|
@@ -73,8 +92,14 @@ variable manager — never in the repo.
 | POST | `/api/auth/refresh` | Rotate refresh token, mint new access token |
 | POST | `/api/auth/logout` | Revoke refresh token, clear cookie |
 | GET | `/api/auth/me` | Current user (Bearer token) |
+| GET | `/api/assets` | Search/filter/sort the asset universe (paginated) |
+| GET | `/api/assets/{symbol}` | Asset detail |
+| GET | `/api/assets/{symbol}/history?range=1m..max` | Daily OHLCV bars |
+| GET | `/api/market/ticker` | Top movers (landing strip / dashboard) |
+| POST | `/api/jobs/refresh-prices` | Refresh quotes (X-Job-Token) |
+| POST | `/api/jobs/backfill-history` | Full history backfill (X-Job-Token) |
 | GET | `/api/health` | Liveness + DB check |
-| GET | `/api/status` | Job-run status page (populated from Phase 2) |
+| GET | `/api/status` | Last run per background job |
 
 ## Deployment (planned hosts, all free tier)
 
@@ -85,7 +110,12 @@ variable manager — never in the repo.
    `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
 3. **Render Postgres** (free tier): set `DATABASE_URL` on the API service.
 4. Backend env vars: `JWT_SECRET` (long random), `CORS_ORIGINS` (the Vercel
-   URL), `REFRESH_COOKIE_SECURE=true`, `REFRESH_COOKIE_SAMESITE=none`, `ENV=prod`.
+   URL), `REFRESH_COOKIE_SECURE=true`, `REFRESH_COOKIE_SAMESITE=none`,
+   `ENV=prod`, `JOB_TOKEN` (long random).
+5. GitHub repo secrets for the scheduled refresh workflow:
+   `FINTRACK_API_URL` (the Render URL) and `FINTRACK_JOB_TOKEN` (same value
+   as `JOB_TOKEN`). Then run the "Scheduled price refresh" workflow manually
+   once (or `POST /api/jobs/backfill-history`) to load initial data.
 
 ## Known Phase 1 stubs / TODOs
 

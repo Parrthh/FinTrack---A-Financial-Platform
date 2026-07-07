@@ -88,6 +88,10 @@ class Asset(Base):
     currency: Mapped[str] = mapped_column(String(10), default="USD")
     last_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     last_price_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    day_change_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Provider-specific identifier (CoinGecko coin id for crypto; unused for stocks).
+    provider_ref: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 class PriceHistory(Base):
@@ -157,6 +161,20 @@ class Alert(Base):
     alert_type: Mapped[AlertType] = mapped_column(Enum(AlertType))
     threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class JobRun(Base):
+    """One row per background-job execution, surfaced on /api/status."""
+
+    __tablename__ = "job_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    job_name: Mapped[str] = mapped_column(String(50), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="running")  # running|success|error
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    items_processed: Mapped[int | None] = mapped_column(nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AuditLog(Base):

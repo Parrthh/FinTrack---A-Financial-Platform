@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.logging_config import app_log, configure_logging
-from app.routers import auth, status
+from app.routers import assets, auth, jobs, status
 
 settings = get_settings()
 configure_logging(settings.env)
@@ -45,4 +45,6 @@ async def log_requests(request: Request, call_next):
 
 
 app.include_router(auth.router)
+app.include_router(assets.router)
+app.include_router(jobs.router)
 app.include_router(status.router)

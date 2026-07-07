@@ -8,9 +8,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import { api, type TickerEntry } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { changeClass, formatChange, formatPrice } from "@/lib/format";
 
 const PANELS = [
   {
@@ -23,20 +25,30 @@ const PANELS = [
     body: "Daily news flagged as genuine company progress for assets you follow.",
     phase: "Phase 4",
   },
-  {
-    title: "Market movers",
-    body: "Top movers across stocks, ETFs, and crypto.",
-    phase: "Phase 2",
-  },
 ];
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const [movers, setMovers] = useState<TickerEntry[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    api
+      .marketTicker(6)
+      .then((entries) => {
+        if (!cancelled) setMovers(entries);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (loading || !user) {
     return (
@@ -91,6 +103,37 @@ export default function DashboardPage() {
               <p className="mt-3 text-sm text-slate-500">{p.body}</p>
             </div>
           ))}
+
+          <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-200">Market movers</h2>
+              <Link href="/assets" className="text-xs text-emerald-400 hover:underline">
+                All markets →
+              </Link>
+            </div>
+            {movers.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">
+                No price data yet — the refresh job hasn&apos;t run.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2 font-mono text-sm">
+                {movers.map((m) => (
+                  <li key={m.symbol} className="flex items-center justify-between">
+                    <Link
+                      href={`/assets/${m.symbol}`}
+                      className="text-emerald-300 hover:underline"
+                    >
+                      {m.symbol}
+                    </Link>
+                    <span className="text-slate-400">{formatPrice(m.last_price)}</span>
+                    <span className={changeClass(m.day_change_pct)}>
+                      {formatChange(m.day_change_pct)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </main>
