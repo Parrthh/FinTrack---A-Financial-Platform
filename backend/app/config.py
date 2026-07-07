@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     quote_stale_seconds: int = 3600
     # Re-fetch an asset's daily history when its newest bar is older than this.
     history_stale_seconds: int = 24 * 3600
+    # Cap stored daily history so the DB fits free-tier storage (Neon: 0.5 GB).
+    history_max_days: int = 5 * 366
 
     @property
     def cors_origin_list(self) -> list[str]:

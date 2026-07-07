@@ -108,7 +108,11 @@ variable manager — never in the repo.
 2. **Backend → Render**: web service from `backend/`, build
    `pip install -r requirements.txt`, start
    `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-3. **Render Postgres** (free tier): set `DATABASE_URL` on the API service.
+3. **Postgres → Neon** (free tier — permanent, unlike Render's free Postgres
+   which is deleted after 30 days): create a project at neon.tech and set its
+   connection string as `DATABASE_URL` on the Render API service. To fit
+   Neon's 0.5 GB storage cap, stored daily history is limited to ~5 years
+   per asset (`HISTORY_MAX_DAYS`).
 4. Backend env vars: `JWT_SECRET` (long random), `CORS_ORIGINS` (the Vercel
    URL), `REFRESH_COOKIE_SECURE=true`, `REFRESH_COOKIE_SAMESITE=none`,
    `ENV=prod`, `JOB_TOKEN` (long random).

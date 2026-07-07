@@ -161,7 +161,12 @@ def refresh_stock_prices(db: Session) -> JobRun:
 
 
 def backfill_history(db: Session, asset: Asset) -> int:
-    """Replace an asset's stored daily history from its provider."""
+    """Replace an asset's stored daily history from its provider.
+
+    History older than history_max_days is dropped so the database stays
+    within free-tier storage limits.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=settings.history_max_days)
     if asset.asset_type == AssetType.crypto:
         if not asset.provider_ref:
             return 0
@@ -174,6 +179,7 @@ def backfill_history(db: Session, asset: Asset) -> int:
                 volume=p.volume,
             )
             for p in points
+            if p.ts >= cutoff
         ]
     else:
         bars = stooq.fetch_daily_history(asset.symbol)
@@ -188,6 +194,7 @@ def backfill_history(db: Session, asset: Asset) -> int:
                 volume=b.volume,
             )
             for b in bars
+            if b.ts >= cutoff
         ]
     # Keep one bar per day: replace wholesale (simple + idempotent).
     db.execute(delete(PriceHistory).where(PriceHistory.asset_id == asset.id))
